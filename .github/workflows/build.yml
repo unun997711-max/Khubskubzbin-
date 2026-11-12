@@ -1,0 +1,546 @@
+
+name: AELARION Android Game
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Create AELARION
+        shell: bash
+        run: |
+          mkdir -p app/src/main/assets
+          mkdir -p app/src/main/java/com/aelarion/game
+
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = 'AELARION'
+          include ':app'
+          EOF
+
+          cat > build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.6.1' apply false
+          }
+          EOF
+
+          cat > app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.aelarion.game'
+              compileSdk 35
+
+              defaultConfig {
+                  applicationId 'com.aelarion.game'
+                  minSdk 23
+                  targetSdk 35
+                  versionCode 1
+                  versionName '1.0'
+              }
+          }
+          EOF
+
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application
+                  android:label="AELARION"
+                  android:theme="@android:style/Theme.Material.Light.NoActionBar"
+                  android:hardwareAccelerated="true">
+                  <activity
+                      android:name=".MainActivity"
+                      android:screenOrientation="landscape"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          cat > app/src/main/java/com/aelarion/game/MainActivity.java <<'EOF'
+          package com.aelarion.game;
+
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.view.View;
+          import android.webkit.WebView;
+          import android.webkit.WebSettings;
+
+          public class MainActivity extends Activity {
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+
+                  getWindow().getDecorView().setSystemUiVisibility(
+                      View.SYSTEM_UI_FLAG_FULLSCREEN |
+                      View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+                      View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
+                      View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                  );
+
+                  WebView game = new WebView(this);
+                  game.setBackgroundColor(0xFF100923);
+
+                  WebSettings settings = game.getSettings();
+                  settings.setJavaScriptEnabled(true);
+                  settings.setDomStorageEnabled(true);
+
+                  setContentView(game);
+                  game.loadUrl("file:///android_asset/index.html");
+              }
+          }
+          EOF
+
+          cat > app/src/main/assets/index.html <<'EOF'
+          <!DOCTYPE html>
+          <html lang="ar">
+          <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+          <title>AELARION</title>
+          <style>
+          *{box-sizing:border-box}
+          body{
+            margin:0;
+            overflow:hidden;
+            background:#100923;
+            color:white;
+            font-family:Arial;
+            touch-action:none
+          }
+          canvas{width:100vw;height:100vh;display:block}
+          #brand{
+            position:absolute;top:10px;left:12px;
+            font-size:20px;font-weight:900;
+            letter-spacing:3px;color:#e3c8ff;
+            text-shadow:0 0 15px #a66bff;
+            pointer-events:none
+          }
+          #hud{
+            position:absolute;top:12px;right:12px;
+            display:flex;gap:7px;flex-wrap:wrap;
+            justify-content:flex-end;pointer-events:none
+          }
+          .panel{
+            background:#160e29dd;border:1px solid #7954a9;
+            border-radius:9px;padding:8px 11px;
+            font-size:12px
+          }
+          #controls{
+            position:absolute;bottom:12px;left:12px;right:12px;
+            display:flex;justify-content:space-between;
+            align-items:end
+          }
+          .group{display:flex;gap:8px}
+          button{
+            width:57px;height:57px;border-radius:16px;
+            background:#281943dd;color:white;
+            border:1px solid #bb91f2;font-size:23px;
+            touch-action:none
+          }
+          button:active{background:#8d54cf}
+          .special{background:#7140a9dd}
+          #menu{
+            position:absolute;inset:0;
+            display:flex;align-items:center;justify-content:center;
+            background:linear-gradient(130deg,#100923,#281341,#100923);
+            text-align:center
+          }
+          #menuBox{
+            width:85%;max-width:440px;
+            padding:25px 18px;border:1px solid #9865d2;
+            border-radius:22px;background:#170e2beF;
+            box-shadow:0 0 40px #743bb655
+          }
+          #logo{
+            width:85px;height:85px;margin:auto;
+            border-radius:22px;background:linear-gradient(145deg,#a46bfa,#542b94);
+            display:grid;place-items:center;
+            font-size:65px;font-weight:900;
+            box-shadow:0 0 30px #9c60ff88
+          }
+          h1{letter-spacing:5px;color:#ead9ff}
+          #menu p{color:#c4b2db;font-size:13px;line-height:1.8}
+          #start{
+            width:auto;height:auto;padding:13px 34px;
+            background:linear-gradient(90deg,#6135a5,#a365df);
+            border:0;border-radius:10px;font-size:16px
+          }
+          #hint{color:#9c83bc;font-size:11px}
+          </style>
+          </head>
+          <body>
+
+          <canvas id="game"></canvas>
+
+          <div id="brand">AELARION</div>
+
+          <div id="hud">
+            <div class="panel">💰 <span id="money">0</span></div>
+            <div class="panel">⭐ <span id="mission">1</span></div>
+            <div class="panel">❤️ <span id="health">100</span></div>
+            <div class="panel" id="vehicle">🚶 ON FOOT</div>
+          </div>
+
+          <div id="controls">
+            <div class="group">
+              <button data-key="left">◀</button>
+              <button data-key="right">▶</button>
+              <button data-key="up">▲</button>
+              <button data-key="down">▼</button>
+            </div>
+            <div class="group">
+              <button class="special" data-key="enter">🚘</button>
+              <button class="special" data-key="action">✦</button>
+            </div>
+          </div>
+
+          <div id="menu">
+            <div id="menuBox">
+              <div id="logo">A</div>
+              <h1>AELARION</h1>
+              <p>WELCOME TO THE OPEN WORLD</p>
+              <p>اكتشف المدينة، قد السيارات، وأكمل المهمات.</p>
+              <button id="start">START GAME</button>
+              <p id="hint">MOBILE OPEN WORLD EXPERIENCE</p>
+            </div>
+          </div>
+
+          <script>
+          (()=>{
+
+          const canvas=document.getElementById('game');
+          const ctx=canvas.getContext('2d');
+
+          const W=960,H=540;
+          canvas.width=W;
+          canvas.height=H;
+
+          const keys={};
+          let running=false;
+          let money=0;
+          let mission=1;
+          let camera={x:0,y:0};
+
+          let player={
+            x:480,y:480,
+            speed:155,
+            health:100,
+            car:false,
+            angle:0
+          };
+
+          let cars=[
+            {x:550,y:480,color:'#bd58ed',angle:0},
+            {x:900,y:220,color:'#36a6e8',angle:0},
+            {x:250,y:900,color:'#e6a64d',angle:0},
+            {x:1100,y:680,color:'#ef6688',angle:0}
+          ];
+
+          let buildings=[];
+          let missionPoint={x:900,y:900};
+          let particles=[];
+
+          function setupWorld(){
+            for(let x=0;x<10;x++){
+              for(let y=0;y<10;y++){
+                if((x%2===0)&&(y%2===0)){
+                  buildings.push({
+                    x:x*420+40,
+                    y:y*420+40,
+                    w:230+Math.random()*65,
+                    h:210+Math.random()*70,
+                    color:['#25243c','#302844','#242e42','#342943'][Math.floor(Math.random()*4)]
+                  });
+                }
+              }
+            }
+          }
+          setupWorld();
+
+          function bindButtons(){
+            document.querySelectorAll('[data-key]').forEach(b=>{
+              const k=b.dataset.key;
+              b.addEventListener('pointerdown',e=>{
+                e.preventDefault();keys[k]=true;
+              });
+              ['pointerup','pointercancel','pointerleave'].forEach(t=>{
+                b.addEventListener(t,()=>keys[k]=false);
+              });
+            });
+          }
+          bindButtons();
+
+          document.getElementById('start').onclick=()=>{
+            running=true;
+            document.getElementById('menu').style.display='none';
+          };
+
+          function box(x,y,w,h,color){
+            ctx.fillStyle=color;
+            ctx.fillRect(x,y,w,h);
+          }
+
+          function world(){
+            // المدينة
+            box(-1000,-1000,5000,5000,'#171c2c');
+
+            // الشوارع الرئيسية
+            for(let x=0;x<4500;x+=420){
+              box(x-45,0,90,4200,'#333547');
+              box(x-2,0,4,4200,'#a7a0a0');
+              for(let y=0;y<4200;y+=100){
+                box(x-2,y,4,35,'#e3c78b');
+              }
+            }
+
+            for(let y=0;y<4500;y+=420){
+              box(0,y-45,4200,90,'#333547');
+              box(0,y-2,4200,4,'#a7a0a0');
+              for(let x=0;x<4200;x+=100){
+                box(x,y-2,35,4,'#e3c78b');
+              }
+            }
+
+            // المباني
+            buildings.forEach(b=>{
+              box(b.x+12,b.y+15,b.w,b.h,'#0c1020');
+              box(b.x,b.y,b.w,b.h,b.color);
+              box(b.x+8,b.y+8,b.w-16,b.h-16,'#34314a');
+
+              for(let i=0;i<4;i++){
+                for(let j=0;j<3;j++){
+                  box(b.x+20+i*48,b.y+25+j*55,18,25,'#a17bc4');
+                }
+              }
+
+              box(b.x+10,b.y+10,b.w-20,5,'#8b5bc2');
+            });
+
+            // أشجار
+            for(let x=100;x<4000;x+=300){
+              for(let y=120;y<4000;y+=300){
+                if(Math.floor(x+y)%3===0){
+                  ctx.fillStyle='#285c52';
+                  ctx.beginPath();
+                  ctx.arc(x,y,15,0,Math.PI*2);
+                  ctx.fill();
+                  ctx.fillStyle='#478c67';
+                  ctx.beginPath();
+                  ctx.arc(x-4,y-5,8,0,Math.PI*2);
+                  ctx.fill();
+                }
+              }
+            }
+          }
+
+          function drawCar(car){
+            ctx.save();
+            ctx.translate(car.x,car.y);
+            ctx.rotate(car.angle);
+            ctx.fillStyle='#10101b';
+            ctx.fillRect(-25,-13,50,26);
+            ctx.fillStyle=car.color;
+            ctx.fillRect(-22,-11,44,22);
+            ctx.fillStyle='#b8d5e9';
+            ctx.fillRect(-10,-9,17,18);
+            ctx.fillStyle='#f8e9a9';
+            ctx.fillRect(18,-8,4,5);
+            ctx.fillRect(18,4,4,5);
+            ctx.restore();
+          }
+
+          function drawPlayer(){
+            ctx.save();
+            ctx.translate(player.x,player.y);
+
+            if(player.car){
+              ctx.fillStyle='#d28cff';
+              ctx.fillRect(-20,-12,40,24);
+              ctx.fillStyle='#cce6fa';
+              ctx.fillRect(-8,-9,15,18);
+            }else{
+              ctx.fillStyle='#c1a4e9';
+              ctx.beginPath();
+              ctx.arc(0,0,11,0,Math.PI*2);
+              ctx.fill();
+
+              ctx.fillStyle='#f0d6c5';
+              ctx.beginPath();
+              ctx.arc(0,-13,8,0,Math.PI*2);
+              ctx.fill();
+
+              ctx.fillStyle='#252038';
+              ctx.fillRect(-8,7,16,10);
+            }
+            ctx.restore();
+          }
+
+          function drawMission(){
+            const x=missionPoint.x;
+            const y=missionPoint.y;
+            const pulse=20+Math.sin(Date.now()/180)*5;
+
+            ctx.strokeStyle='#d69cff';
+            ctx.lineWidth=4;
+            ctx.beginPath();
+            ctx.arc(x,y,pulse,0,Math.PI*2);
+            ctx.stroke();
+
+            ctx.fillStyle='#e8c6ff';
+            ctx.font='bold 18px Arial';
+            ctx.textAlign='center';
+            ctx.fillText('MISSION',x,y-32);
+          }
+
+          function update(dt){
+            if(!running)return;
+
+            let dx=0,dy=0;
+            if(keys.left)dx--;
+            if(keys.right)dx++;
+            if(keys.up)dy--;
+            if(keys.down)dy++;
+
+            if(dx||dy){
+              let length=Math.hypot(dx,dy);
+              dx/=length;dy/=length;
+
+              let speed=player.car?player.speed*2.5:player.speed;
+              player.x+=dx*speed*dt;
+              player.y+=dy*speed*dt;
+              player.angle=Math.atan2(dy,dx);
+            }
+
+            player.x=Math.max(20,Math.min(4080,player.x));
+            player.y=Math.max(20,Math.min(4080,player.y));
+
+            if(keys.enter){
+              keys.enter=false;
+              if(player.car){
+                player.car=false;
+              }else{
+                let nearest=null,dist=65;
+                cars.forEach(c=>{
+                  let d=Math.hypot(c.x-player.x,c.y-player.y);
+                  if(d<dist){nearest=c;dist=d;}
+                });
+                if(nearest){
+                  player.car=true;
+                  player.x=nearest.x;
+                  player.y=nearest.y;
+                }
+              }
+            }
+
+            if(keys.action){
+              keys.action=false;
+              if(Math.hypot(player.x-missionPoint.x,player.y-missionPoint.y)<90){
+                money+=250;
+                mission++;
+                missionPoint={
+                  x:300+Math.random()*3300,
+                  y:300+Math.random()*3300
+                };
+              }
+            }
+
+            camera.x=player.x-W/2;
+            camera.y=player.y-H/2;
+
+            camera.x=Math.max(0,Math.min(3120,camera.x));
+            camera.y=Math.max(0,Math.min(3540,camera.y));
+
+            document.getElementById('money').textContent=money;
+            document.getElementById('mission').textContent=mission;
+            document.getElementById('health').textContent=player.health;
+            document.getElementById('vehicle').textContent=player.car?'🚘 DRIVING':'🚶 ON FOOT';
+          }
+
+          function render(){
+            ctx.clearRect(0,0,W,H);
+            ctx.save();
+            ctx.translate(-camera.x,-camera.y);
+
+            world();
+            drawMission();
+            cars.forEach(drawCar);
+            drawPlayer();
+
+            ctx.restore();
+
+            // اتجاه المهمة
+            ctx.fillStyle='#e4caff';
+            ctx.font='bold 15px Arial';
+            ctx.textAlign='center';
+            ctx.fillText('AELARION CITY',W/2,85);
+          }
+
+          let previous=0;
+          function loop(t){
+            let dt=Math.min((t-previous)/1000||0,.04);
+            previous=t;
+            update(dt);
+            render();
+            requestAnimationFrame(loop);
+          }
+
+          requestAnimationFrame(loop);
+
+          })();
+          </script>
+          </body>
+          </html>
+          EOF
+
+      - name: Build APK
+        run: gradle --no-daemon assembleDebug
+
+      - name: Check APK
+        run: test -f app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload AELARION
+        uses: actions/upload-artifact@v4
+        with:
+          name: AELARION-ANDROID-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
